@@ -1,14 +1,13 @@
-use std::cell::RefCell;
-use crate::domain::bank_account::{BankAccount, BankAccountPort, Transaction};
-use sqlx::{query, Pool, Postgres, Transaction as DbTransaction};
+use crate::domain::bank_account::{BankAccount, Transaction};
+use crate::domain::port::BankAccountPort;
+use sqlx::{query, Pool, Postgres};
 use std::error::Error;
-use tokio::task_local;
 
 pub struct BankAccountAdapter {
     pool: Pool<Postgres>,
 }
 
-struct TransactionManager<'a> {
+/*struct TransactionManager<'a> {
     transaction: DbTransaction<'a, Postgres>,
     pool: Pool<Postgres>,
 }
@@ -16,14 +15,16 @@ struct TransactionManager<'a> {
 impl<'a> TransactionManager<'a> {
     pub async fn transaction(&mut self) {
         let transaction = self.pool.begin().await.unwrap();
-        TRANSACTION.scope(RefCell::new(transaction), async move {}).await;
+        TRANSACTION
+            .scope(RefCell::new(transaction), async move {})
+            .await;
     }
 }
 
 task_local! {
     static TRANSACTION: RefCell<DbTransaction<Postgres>>;
 }
-
+*/
 impl BankAccountAdapter {
     async fn get_bank_account_id(&self, account_number: &str) -> Result<i32, sqlx::Error> {
         let row: (i32,) = sqlx::query_as("SELECT id FROM bank_account WHERE account_number = $1")
@@ -42,26 +43,22 @@ impl BankAccountAdapter {
 
 impl BankAccountPort for BankAccountAdapter {
     async fn save_account(&self, bank_account: &BankAccount) -> Result<i32, Box<dyn Error>> {
-        
-        
-        let mut option = self.pool.begin().await?;
+        let mut transaction = self.pool.begin().await?;
         let result = query!(
             r#"INSERT INTO bank_account (account_number, initial_amount) VALUES ($1, $2) RETURNING ID"#,
             bank_account.account_number(),
-            bank_account.initial_amount()).fetch_one(&mut *option)
+            bank_account.initial_amount()).fetch_one(&mut *transaction)
             .await?;
-        option.commit().await?;
+        transaction.commit().await?;
         Ok(result.id)
     }
 
     async fn save_transaction(
         &self,
-        bank_account: &BankAccount,
+        account_number: &str,
         transaction: &Transaction,
     ) -> Result<i32, Box<dyn Error>> {
-        let id = self
-            .get_bank_account_id(bank_account.account_number())
-            .await?;
+        let id = self.get_bank_account_id(account_number).await?;
         let result = query!(
             r#"INSERT INTO transaction (bank_account_id, type, amount, date) VALUES ($1, $2, $3, $4) RETURNING ID"#,
             id,
@@ -73,7 +70,7 @@ impl BankAccountPort for BankAccountAdapter {
         Ok(result.id)
     }
 
-    async fn load(&self, account_number: String) -> Result<BankAccount, Box<dyn Error>> {
+    async fn load(&self, account_number: &str) -> Result<BankAccount, Box<dyn Error>> {
         let bank_account_row = sqlx::query!(
             "SELECT account_number, initial_amount FROM bank_account WHERE account_number = $1",
             account_number

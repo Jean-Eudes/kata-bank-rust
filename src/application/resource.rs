@@ -1,7 +1,9 @@
+use crate::application::error::ProblemDetail;
 use crate::domain::bank_account::Transaction;
 use crate::AppState;
 use axum::extract::{Path, State};
-use axum::{debug_handler, Json};
+use axum::http::StatusCode;
+use axum::Json;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +31,7 @@ pub struct TransactionResponse {
     pub amount: i32,
     pub date: DateTime<Utc>,
 }
-#[debug_handler]
+
 pub async fn create_account(
     State(state): State<AppState>,
     Path(account_number): Path<String>,
@@ -47,7 +49,7 @@ pub async fn deposit(
     State(state): State<AppState>,
     Path(account_number): Path<String>,
     Json(payload): Json<TransactionRequest>,
-) -> Result<(), String> {
+) -> Result<(), ProblemDetail> {
     state.bank_account_adapter.deposit_into_bank_account(
         account_number,
         payload.amount,
@@ -60,7 +62,7 @@ pub async fn withdraw(
     State(state): State<AppState>,
     Path(account_number): Path<String>,
     Json(payload): Json<TransactionRequest>,
-) -> Result<(), String> {
+) -> Result<(), ProblemDetail> {
     state.bank_account_adapter.with_draw_into_bank_account(
         account_number,
         payload.amount,
@@ -72,11 +74,11 @@ pub async fn withdraw(
 pub async fn get_account(
     State(state): State<AppState>,
     Path(account_number): Path<String>,
-) -> Result<Json<BankAccountResponse>, String> {
+) -> Result<Json<BankAccountResponse>, ProblemDetail> {
     // Récupérer les informations du compte bancaire et les transactions de la base de données
     // Retourner la réponse
-    let option = state.bank_account_adapter.get_bank_account(account_number).await;
-    if let Some(bank_account) = option {
+    let bank_account = state.bank_account_adapter.get_bank_account(&account_number).await;
+    if let Some(bank_account) = bank_account {
         let mut transactions = vec![];
         for t in bank_account.transactions() {
             let new_transaction = match t {
@@ -101,5 +103,6 @@ pub async fn get_account(
         };
         return Ok(Json(response));
     }
-    Err("BankAccount not found".to_string())
+    let string = format!("account '{}' does not exist", &account_number);
+    Err(ProblemDetail::new(StatusCode::NOT_FOUND, string))
 }

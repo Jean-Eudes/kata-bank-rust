@@ -1,6 +1,5 @@
 use crate::domain::bank_account::Transaction::{Deposit, Withdraw};
 use chrono::{DateTime, Utc};
-use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
@@ -35,19 +34,21 @@ impl BankAccount {
         }
     }
 
-    pub fn deposit(&mut self, amount: i32) {
+    pub fn deposit(&mut self, amount: i32) -> &Transaction {
         let transaction = Deposit {
             date: Utc::now(),
             amount,
         };
         self.transactions.push(transaction);
+        self.transactions.last().unwrap()
     }
 
-    pub fn with_draw(&mut self, amount: i32) {
+    pub fn with_draw(&mut self, amount: i32) -> &Transaction {
         self.transactions.push(Withdraw {
             date: Utc::now(),
             amount,
         });
+        self.transactions.last().unwrap()
     }
 
     pub fn balance(&self) -> i32 {
@@ -66,10 +67,6 @@ impl BankAccount {
             })
             .sum();
         self.initial_amount + sum
-    }
-
-    pub fn last(&self) -> Option<&Transaction> {
-        self.transactions.last()
     }
 
     pub fn account_number(&self) -> &str {
@@ -121,7 +118,7 @@ impl Display for BankAccount {
 }
 
 impl Display for Transaction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Transaction::Deposit { date, amount } => {
                 write!(f, "Deposit {{ date: {}, amount: {} }}", date, amount)
@@ -133,20 +130,10 @@ impl Display for Transaction {
     }
 }
 
-pub trait BankAccountPort {
-    async fn save_account(&self, bank_account: &BankAccount) -> Result<i32, Box<dyn Error>>;
-    async fn save_transaction(
-        &self,
-        bank_account: &BankAccount,
-        transaction: &Transaction,
-    ) -> Result<i32, Box<dyn Error>>;
-    async fn load(&self, account_number: String) -> Result<BankAccount, Box<dyn Error>>;
-}
-
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
     use super::*;
-    use std::cell::Cell;
 
     #[test]
     fn should_create_new_bank_account() {
@@ -213,31 +200,4 @@ mod tests {
         assert_eq!(account.balance(), 2_500);
     }
 
-    #[derive(Debug)]
-    struct WithCell {
-        a: u32,
-        b: Cell<u32>,
-    }
-    #[test]
-    fn should_test_cell() {
-        // Given
-        let account = BankAccount::create_new_account("account_number".to_string(), 1000);
-        let mut account = Cell::new(account);
-        let a = WithCell {
-            a: 12,
-            b: Cell::new(10),
-        };
-
-        println!("{a:?}");
-        a.b.set(200);
-        println!("{a:?}");
-        
-
-        // When
-        account.get_mut().with_draw(500);
-        account.get_mut().deposit(2000);
-
-        // Then
-        assert_eq!(account.get_mut().balance(), 2_500);
-    }
 }
