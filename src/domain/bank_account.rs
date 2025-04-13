@@ -132,7 +132,6 @@ impl Display for Transaction {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
     use super::*;
 
     #[test]
