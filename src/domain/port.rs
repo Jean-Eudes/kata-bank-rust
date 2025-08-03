@@ -1,9 +1,9 @@
-use std::error::Error;
 use crate::domain::bank_account::{BankAccount, Transaction};
+use std::error::Error;
 
 pub trait BankAccountPort {
     async fn save_account(&self, bank_account: &BankAccount) -> Result<i32, Box<dyn Error>>;
-    async fn save_transaction<'a,>(
+    async fn save_transaction<'a>(
         &'a self,
         bank_account: &str,
         transaction: &'a Transaction,

@@ -198,5 +198,4 @@ mod tests {
         // Then
         assert_eq!(account.balance(), 2_500);
     }
-
 }

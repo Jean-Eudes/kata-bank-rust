@@ -1,2 +1,2 @@
-pub mod resource;
 mod error;
+pub mod resource;

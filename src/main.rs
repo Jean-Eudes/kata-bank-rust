@@ -11,9 +11,9 @@ use tokio::signal;
 use tracing::info;
 use tracing_subscriber::fmt::format::FmtSpan;
 
+mod application;
 mod domain;
 mod infrastructure;
-mod application;
 
 #[derive(Clone)]
 struct AppState {

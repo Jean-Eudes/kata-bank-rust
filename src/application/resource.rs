@@ -37,11 +37,10 @@ pub async fn create_account(
     Path(account_number): Path<String>,
     Json(payload): Json<CreateBankAccount>,
 ) -> Result<(), String> {
-    state.bank_account_adapter.create_bank_account(
-        account_number,
-        payload.initial_amount,
-    )
-    .await;
+    state
+        .bank_account_adapter
+        .create_bank_account(account_number, payload.initial_amount)
+        .await;
     Ok(())
 }
 
@@ -50,11 +49,10 @@ pub async fn deposit(
     Path(account_number): Path<String>,
     Json(payload): Json<TransactionRequest>,
 ) -> Result<(), ProblemDetail> {
-    state.bank_account_adapter.deposit_into_bank_account(
-        account_number,
-        payload.amount,
-    )
-    .await;
+    state
+        .bank_account_adapter
+        .deposit_into_bank_account(account_number, payload.amount)
+        .await;
     Ok(())
 }
 
@@ -63,21 +61,22 @@ pub async fn withdraw(
     Path(account_number): Path<String>,
     Json(payload): Json<TransactionRequest>,
 ) -> Result<(), ProblemDetail> {
-    state.bank_account_adapter.with_draw_into_bank_account(
-        account_number,
-        payload.amount,
-    )
-    .await;
+    state
+        .bank_account_adapter
+        .with_draw_into_bank_account(account_number, payload.amount)
+        .await;
     Ok(())
 }
 
 pub async fn get_account(
-    State(state): State<AppState>,
+    State(AppState {
+        bank_account_adapter,
+    }): State<AppState>,
     Path(account_number): Path<String>,
 ) -> Result<Json<BankAccountResponse>, ProblemDetail> {
     // Récupérer les informations du compte bancaire et les transactions de la base de données
     // Retourner la réponse
-    let bank_account = state.bank_account_adapter.get_bank_account(&account_number).await;
+    let bank_account = bank_account_adapter.get_bank_account(&account_number).await;
     if let Some(bank_account) = bank_account {
         let mut transactions = vec![];
         for t in bank_account.transactions() {

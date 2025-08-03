@@ -1,3 +1,3 @@
 pub mod bank_account;
-pub mod use_case;
 pub mod port;
+pub mod use_case;
